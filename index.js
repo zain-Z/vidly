@@ -1,67 +1,30 @@
 const express = require('express');
+const config = require('config');
+const helmet = require('helmet');
+const morgan = require('morgan');
 const Joi = require('joi');
+const { render } = require('pug');
+const debug = require('debug')('app:startup');
+const genres = require('./routes/genres')
+const home = require('./routes/home')
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({extended: true}));
+app.use(helmet());
+app.use('/api/genres', genres);
+app.use('/', home);
 
-const genres = [
-    { id:1, name: 'action'},
-    { id:2, name: 'horror'}
-];
 
-app.get('/api/genres', (req, res) => {
-    res.send(genres);
-})
+app.set('view engine', 'pug');
+app.set('views', './views');
 
-app.get('/api/genres/:id', (req, res) => {
-    const genre = genres.find(g => g.id === parseInt(req.params.id));
-    if (!genre) return res.status(404).send('The genre with the given ID was not found.')
-    res.send(genre)
-});
 
-app.post('/api/genres', (req, res) => {
-    
-    const {error} = validateGenre(req.body);
-
-    if (error) return res.status(400).send(error.details[0].message);
-    const genre = {
-        id: genres.length + 1,
-        name: req.body.name
-    };
-    genres.push(genre);
-    res.send(genre);
-});
-
-app.put('/api/genres/:id', (req, res) => {
-    const genre = genres.find(g => g.id === parseInt(req.params.id));
-    if (!genre) return res.status(404).send('The genre with the given ID was not found.');
-
-    const { error } = validateGenre(req.body);
-
-    if (error) return res.status(400).send(error.details[0].message);
-
-    genre.name = req.body.name;
-    res.send(genre);
-});
-
-app.delete('/api/genres/:id', (req, res) => {
-    const genre = genres.find(g => g.id === parseInt(req.params.id));
-    if (!genre) return res.status(404).send('The genre with the given ID was not found.');
-
-    const index = genres.indexOf(genre);
-    genres.splice(index, 1);
-
-    res.send(genre);
-});
-
-function validateGenre(genre){
-    const schema = {
-        name: Joi.string().min(3).required()
-    };
-
-    return Joi.validate(genre, schema);
+if (app.get('env') === 'development'){
+    console.log(process.env.NODE_ENV)
+    app.use(morgan('tiny'));
+    console.log('Morgan is enabled...');
 }
-
 
 
 const port = process.env.PORT || 3000;
